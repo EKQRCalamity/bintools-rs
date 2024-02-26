@@ -3,9 +3,12 @@ Replacement for unix commands on windows or macos. Written in pure rust, with st
 
 ### Currently implemented:
 rm <file/folder> ...
+
 touch <file/folder> ...
 
 ### Next up:
 ls
+
 ll
+
 cp <source> <dest>
