@@ -84,7 +84,7 @@ enum Tables {
 
 struct Table {
     mode: Option<Tables>,
-    rows: Vec<TableContent>,
+    columns: Vec<TableContent>,
 }
 
 impl Table {
@@ -102,9 +102,69 @@ impl Table {
         }
     }
 
-    fn add_row(&mut self, content: TableContent) -> &Table {
-        self.rows.push(content);
+    fn add_col(&mut self, content: TableContent) -> &Table {
+        self.columns.push(content);
         self
+    }
+
+    fn format(&self) -> String {
+        match (self.mode.unwrap_or(Tables::Table)) {
+            Tables::List => {
+                let mut output: String = String::new();
+                let output_cols: Vec<Vec<String>> = Vec::new();
+                let mut height = 0;
+                for col in self.columns {
+                    let mut min_width = col.head.unwrap_or(String::new()).len();
+                    let tempcols: Vec<String> = Vec::new();
+                    tempcols.push(col.head.unwrap_or(String::new()));
+                    height = 2;
+                    for content in col.content {
+                        if content.len() > min_width {
+                            min_width = content.len();
+                        }
+                        tempcols.push(format!("{}", content));
+                        height += 1;
+                    }
+                    tempcols.push((0..min_width + 2).map(|_| "-").collect::<String>());
+                    output_cols.push(tempcols);
+                }
+
+                let mut n = 0;
+
+                for columns in output_cols {
+                    // Generate head row
+                    while n < output_cols.len() - 1 {
+                        output = format!("{}|{}", output, output_cols[n][0]);
+                        n += 1;
+                    }
+                    n = 0;
+                    output = format!("{}\n", output);
+                    while n < output_cols.len() - 1 {
+                        output = format!("{}|{}", output, output_cols[n][output_cols[n].len() - 1]);
+                        n += 1;
+                    }
+                    n = 0;
+                    for col in columns {
+                        if n == 0 {
+                            n += 1;
+                            continue;
+                        }
+
+                        if n == columns.len() - 1 {
+                            continue;
+                        }
+
+                        while n < output_cols.len() {
+                            output
+                        }
+                    } 
+                } 
+                output
+            },
+            Tables::Table => {
+
+            }
+        }
     }
 
     fn display() {
