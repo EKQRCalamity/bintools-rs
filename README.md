@@ -32,9 +32,9 @@ echo $profile
 ```
 ![example1](https://raw.githubusercontent.com/EKQRCalamity/bintools-rs/main/Screenshot%202024-02-26%20183834.png)
 
-Edit the profile.ps1 with your favorite editor (Notepad is enough) and add the following line, replacing 'rm' with the preset you want to overwrite and 'rm.exe' with the thing you want it overwritten with. The stuff aftet that is for bypassing the restriction on overwriting presets.
+Edit the profile.ps1 with your favorite editor (Notepad is enough) and add the following line, replacing 'rm' with the preset you want to overwrite and 'rm.exe' with the thing you want it overwritten with. The stuff after that is for bypassing the restriction on overwriting presets.
 ```powershell
-Set-Alias 'rm 'rm.exe' -Force -Option 'Constant', 'AllScope'
+Set-Alias 'rm' 'rm.exe' -Force -Option 'Constant', 'AllScope'
 ```
 ![example2](https://raw.githubusercontent.com/EKQRCalamity/bintools-rs/main/Screenshot%202024-02-26%20183749.png)
 
