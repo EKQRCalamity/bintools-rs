@@ -1,2 +1,2 @@
 [workspace]
-members = ["cp", "ll", "rm", "touch"]
+members = ["cp", "ll", "ls", "rm", "touch"]

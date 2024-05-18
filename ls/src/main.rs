@@ -1,178 +1,279 @@
+use std::{fs, time::UNIX_EPOCH};
+
 #[derive(Debug)]
 struct ArgParser {
-    list: Option<bool>,
-    all: Option<bool>,
-    folder_classification: Option<bool>,
-    sortmodfied: Option<bool>, 
+  list: Option<bool>,
+  all: Option<bool>,
+  folder_classification: Option<bool>,
+  sortmodified: Option<bool>,
 }
 
 impl ArgParser {
-    fn new() -> ArgParser {
-        let mut parser = ArgParser { list: None, all: None, folder_classification: None, sortmodfied: None };
-        let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
-        let mut n = 0;
+  fn new() -> ArgParser {
+    let mut parser = ArgParser { list: None, all: None, folder_classification: None, sortmodified: None };
+    let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
+    let mut n = 0;
 
-        for arg in args {
-            if n == 0 {
-                n = n + 1;
-                continue;
-            }
-            if n == 1 {
-                match arg.as_str() {
-                    "-l" => {
-                        parser.list = Some(true);
-                    },
-                    "-a" => {
-                        parser.all = Some(true);
-                    },
-                    "-F" => {
-                        parser.folder_classification = Some(true);
-                    },
-                    "-t" => {
-                        parser.sortmodfied = Some(true);
-                    },
-                    _ => {
-                        panic!("Unknown argument specified")
-                    }
-                }
-                n = n + 1;
-            } else {
-                panic!("More than one argument was specified.")
-            }
+    for arg in args {
+      if n == 0 {
+        n = n + 1;
+        continue;
+      }
+      if n == 1 {
+        match arg.as_str() {
+          "-l" => {
+            parser.list = Some(true);
+          },
+          "-a" => {
+            parser.all = Some(true);
+          },
+          "-F" => {
+            parser.folder_classification = Some(true);
+          },
+          "-t" => {
+            parser.sortmodified = Some(true);
+          },
+          _ => {
+            panic!("Unknown argument specified")
+          }
         }
-
-        parser
+        n = n + 1;
+      } else {
+        panic!("More than one argument was specified.")
+      }
     }
+
+    parser
+  }
 }
 
 struct TableContent {
-    head: Option<String>,
-    content: Vec<String>
+  head: Option<String>,
+  content: Vec<String>,
+  min_width: u32
 }
 
 impl TableContent {
-    fn new_from_head(head: String) -> TableContent {
-        TableContent {
-            head: Some(head),
-            content: vec![]
-        }
+  fn new_from_head(head: String) -> TableContent {
+    TableContent {
+      head: Some(head.as_str().to_owned()),
+      content: vec![],
+      min_width: if (head.len() + 2) as u32 > 9 { (head.len() + 2) as u32 } else { 9 }
     }
+  }
 
-    fn new() -> TableContent {
-        TableContent {
-            head: None,
-            content: vec![]
-        }
+  fn add(&mut self, content: String) {
+    self.content.push(content.as_str().to_owned());
+    if (content.len() + 2) as u32 > self.min_width {
+      self.min_width = (content.len() + 2) as u32
     }
-
-    fn set_head(&mut self, head: String) -> &TableContent {
-        self.head = Some(head);
-        self
-    }
-
-    fn add(&mut self, content: String) -> &TableContent {
-        self.content.push(content);
-        self
-    }
+  }
 }
 
 
 enum Tables {
-    List,
-    Table
+  List,
+  Table
 }
 
 struct Table {
-    mode: Option<Tables>,
-    columns: Vec<TableContent>,
+  mode: Option<Tables>,
+  columns: Vec<TableContent>,
 }
 
 impl Table {
-    fn new() -> Table {
-        Table {
-            mode: None,
-            rows: vec![],
+
+  fn new(mode: Tables, columns: Vec<TableContent>) -> Table {
+    return Table {
+      mode: Some(mode),
+      columns
+    }
+  }
+
+  fn pad(instr: String, min_width: u32) -> String {
+    let mut str = instr.as_str().to_owned();
+    let end = instr.split(".").last().unwrap_or("");
+    // Cap the string at 25 characters with an ellipsis if necessary
+    if str.len() > 25 {
+      str.truncate(22); // Truncate to 22 characters to leave room for the ellipsis
+      if end.is_empty() {
+        str.push_str("...");
+      } else {
+        str.truncate(18);
+        str.push_str(format!("[..].{}", end).as_str());
+      }
+    }
+
+    // Calculate the required padding
+    if (str.len() + 1) as u32 >= min_width {
+      format!(" {}", str)
+    } else {
+      format!(
+        " {}{}",
+        str,
+        (0..(min_width - (str.len() + 1) as u32))
+          .map(|_| " ")
+          .collect::<String>()
+      )
+    }
+  }
+
+  fn as_table(cols: Vec<TableContent>) -> String {
+    let mut ret = cols.iter().map(|x| Table::pad(x.head.clone().unwrap_or(String::from("unknown")), x.min_width)).collect::<Vec<String>>().join("|");
+    let full_width = ret.len();
+    ret = format!("{}\n{}", ret, (0..full_width).map(|_| "-").collect::<String>());
+
+    let mut n = 0;
+
+    loop {
+      if n >= cols.len() {break;}
+
+      let mut temp_vec: Vec<String> = Vec::new();
+
+      for content in &cols {
+        temp_vec.push(Table::pad(content.content[n].as_str().to_owned(), content.min_width));
+      }
+
+      ret = format!("{}\n{}", ret, temp_vec.join("|"));
+
+      n = n + 1;
+    }
+
+    return ret;
+  }
+
+  fn as_list(cols: Vec<TableContent>) -> String {
+    let mut ret: String = String::new();
+    for content in &cols {
+      let head = content.head.clone().unwrap_or(String::from("unknown"));
+      if ret.len() == 0 {
+        ret = format!("{}", head);
+      } else {
+        ret = format!("{}\n\n{}", ret, head);
+      }
+      ret = format!("{}\n{}", ret, (0..((head.len() + 3) as u32)).map(|_| "-").collect::<String>());
+      for c in &content.content {
+        ret = format!("{}\n{}", ret, c);
+      }
+    }
+
+    return ret;
+  }
+
+  fn to_readable(self) -> String {
+    let mode = self.mode.unwrap_or(Tables::Table);
+
+    let return_product: String = match mode {
+      Tables::List => {
+        Table::as_list(self.columns)
+      },
+      Tables::Table => {
+        Table::as_table(self.columns)
+      }
+    };
+
+    return return_product;
+  }
+}
+
+#[derive(PartialEq, Eq, Ord, PartialOrd)]
+enum FileFolderType {
+  Folder,
+  HiddenFolder,
+  File,
+  HiddenFile,
+}
+
+struct FileFolder {
+  name: String,
+  fftype: FileFolderType,
+  modified: u64,
+}
+
+impl FileFolder {
+  fn new(sortmodify: bool) -> Vec<FileFolder> {
+    let mut entries: Vec<FileFolder> = Vec::new();
+    let current_dir = match fs::read_dir(".") {
+      Ok(x) => x,
+      Err(e) => panic!("{} {}", "There was an error reading the directory!", e),
+    };
+
+    for entry in current_dir {
+      let entry = match entry {
+        Ok(x) => x,
+        Err(e) => panic!("{} {}", "There was an error getting an entry", e),
+      };
+      let meta = match entry.metadata() {
+        Ok(x) => x,
+        Err(e) => panic!("{} {}", "There was an error reading the metadata of an entry", e),
+      };
+
+      let name = entry.file_name().into_string().unwrap_or_default();
+
+      let hidden = name.starts_with(".");
+      let modified = match meta.modified() {
+        Ok(x) => x.duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        Err(e) => panic!("{} {}", "There was an error reading the modified time of an entry", e),
+      };
+
+      let fftype = if meta.is_dir() {
+        if hidden {
+          FileFolderType::HiddenFolder
+        } else {
+          FileFolderType::Folder
         }
-    }
-
-    fn list() -> Table {
-        Table {
-            mode: Some(Tables::List),
-            rows: vec![]
+      } else {
+        if hidden {
+          FileFolderType::HiddenFile
+        } else {
+          FileFolderType::File
         }
+      };
+
+      entries.push(FileFolder { name, fftype, modified })
     }
 
-    fn add_col(&mut self, content: TableContent) -> &Table {
-        self.columns.push(content);
-        self
+    if sortmodify {
+      entries.sort_by(|a, b| a.modified.cmp(&b.modified));
+    } else {
+      entries.sort_by(|a, b| a.fftype.cmp(&b.fftype));
     }
 
-    fn format(&self) -> String {
-        match (self.mode.unwrap_or(Tables::Table)) {
-            Tables::List => {
-                let mut output: String = String::new();
-                let output_cols: Vec<Vec<String>> = Vec::new();
-                let mut height = 0;
-                for col in self.columns {
-                    let mut min_width = col.head.unwrap_or(String::new()).len();
-                    let tempcols: Vec<String> = Vec::new();
-                    tempcols.push(col.head.unwrap_or(String::new()));
-                    height = 2;
-                    for content in col.content {
-                        if content.len() > min_width {
-                            min_width = content.len();
-                        }
-                        tempcols.push(format!("{}", content));
-                        height += 1;
-                    }
-                    tempcols.push((0..min_width + 2).map(|_| "-").collect::<String>());
-                    output_cols.push(tempcols);
-                }
-
-                let mut n = 0;
-
-                for columns in output_cols {
-                    // Generate head row
-                    while n < output_cols.len() - 1 {
-                        output = format!("{}|{}", output, output_cols[n][0]);
-                        n += 1;
-                    }
-                    n = 0;
-                    output = format!("{}\n", output);
-                    while n < output_cols.len() - 1 {
-                        output = format!("{}|{}", output, output_cols[n][output_cols[n].len() - 1]);
-                        n += 1;
-                    }
-                    n = 0;
-                    for col in columns {
-                        if n == 0 {
-                            n += 1;
-                            continue;
-                        }
-
-                        if n == columns.len() - 1 {
-                            continue;
-                        }
-
-                        while n < output_cols.len() {
-                            output
-                        }
-                    } 
-                } 
-                output
-            },
-            Tables::Table => {
-
-            }
-        }
-    }
-
-    fn display() {
-        
-    }
+    return entries;
+  }
 }
 
 fn main() {
-    let parser = ArgParser::new();
-    println!("Hello world! {:?}", &parser);
+  let parser = ArgParser::new();
+  let list = parser.list.unwrap_or(true);
+  let all = parser.all.unwrap_or(false);
+  let ff = FileFolder::new(parser.sortmodified.unwrap_or(false));
+  let markfolder = parser.folder_classification.unwrap_or(true);
+
+  let mut content: TableContent = TableContent::new_from_head(Table::pad(String::from("Entries"), 9));
+  let mut modifytimes: TableContent = TableContent::new_from_head(Table::pad(String::from("Modified"), 10));
+
+  for entry in ff {
+    if all {
+      if markfolder && (entry.fftype.eq(&FileFolderType::Folder) || entry.fftype.eq(&FileFolderType::HiddenFolder)) {
+        content.add(format!("{}/", Table::pad(entry.name.as_str().to_owned(), (entry.name.len() + 1) as u32)));
+      } else {
+        content.add(Table::pad(entry.name.as_str().to_owned(), (entry.name.len() + 2) as u32));
+      }
+      modifytimes.add(entry.modified.to_string());
+    } else if !entry.fftype.eq(&FileFolderType::HiddenFile) && !entry.fftype.eq(&FileFolderType::HiddenFolder) {
+      if markfolder && entry.fftype.eq(&FileFolderType::Folder) {
+        content.add(format!("{}/", Table::pad(entry.name.as_str().to_owned(), (entry.name.len() + 1) as u32)));
+      } else {
+        content.add(Table::pad(entry.name.as_str().to_owned(), (entry.name.len() + 2) as u32));
+      }
+      modifytimes.add(entry.modified.to_string());
+    }
+  }
+
+  if list {
+    print!("{}", Table::new(Tables::List, vec![content]).to_readable());
+  } else {
+    print!("{}", Table::new(Tables::Table, vec![content, modifytimes]).to_readable());
+  }
 }
