@@ -7,7 +7,7 @@ struct ArgParser {
 impl ArgParser {
     fn new() -> ArgParser {
         let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
-        let mut parser = ArgParser { paths: vec![] }; 
+        let mut parser = ArgParser { paths: vec![] };
         let mut first: bool = true;
         for arg in args {
             if first {
@@ -17,12 +17,12 @@ impl ArgParser {
             parser.paths.push(arg);
         }
         parser
-    }    
+    }
 }
 
 fn main() {
     let parser = ArgParser::new();
-    
+
     if parser.paths.is_empty() {
         println!("No files were specified.")
     }
@@ -31,7 +31,9 @@ fn main() {
         if as_path.exists() {
             println!("Skipping {} file already exists", &path);
         } else {
-            if as_path.is_dir() {
+            if as_path.is_dir() || path.ends_with("/") {
+                let mut path = path.clone();
+                path.truncate(path.len());
                 match std::fs::create_dir_all(&as_path) {
                     Ok(_) => {
                         println!("Folder at {} created", &path);
