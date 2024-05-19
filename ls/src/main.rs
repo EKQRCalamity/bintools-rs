@@ -59,11 +59,11 @@ impl TableContent {
       if (head.trim().len() + 2) as u32 > 9 {
         if (head.trim().len() + 2) as u32 > 25 {
           if head.as_str().to_owned().split(".").last().unwrap_or("").trim().is_empty() {
-            23
+            25
           }
           else
           {
-            head.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 17
+            head.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 25
           }
         }
         else
@@ -76,7 +76,6 @@ impl TableContent {
         9
       }
     };
-    println!("Head minwidth: [{}]", min_width);
 
     TableContent {
       head: Some(head.as_str().to_owned()),
@@ -92,11 +91,11 @@ impl TableContent {
         if (content.trim().len() + 2) as u32 > 9 {
           if (content.trim().len() + 2) as u32 > 25 {
             if content.as_str().to_owned().split(".").last().unwrap_or("").trim().is_empty() {
-              23
+              25
             }
             else
             {
-              content.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 17
+              content.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 25
             }
           }
           else
