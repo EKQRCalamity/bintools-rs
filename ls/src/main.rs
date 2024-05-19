@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fs, time::UNIX_EPOCH};
+use std::{fs, time::UNIX_EPOCH};
 
 #[derive(Debug)]
 struct ArgParser {
