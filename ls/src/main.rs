@@ -1,4 +1,4 @@
-use std::{fs, time::UNIX_EPOCH};
+use std::{convert::TryInto, fs, time::UNIX_EPOCH};
 
 #[derive(Debug)]
 struct ArgParser {
@@ -55,17 +55,60 @@ struct TableContent {
 
 impl TableContent {
   fn new_from_head(head: String) -> TableContent {
+    let min_width = {
+      if (head.trim().len() + 2) as u32 > 9 {
+        if (head.trim().len() + 2) as u32 > 25 {
+          if head.as_str().to_owned().split(".").last().unwrap_or("").trim().is_empty() {
+            23
+          }
+          else
+          {
+            head.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 17
+          }
+        }
+        else
+        {
+          (head.trim().len() + 2) as u32
+        }
+      }
+      else
+      {
+        9
+      }
+    };
+    println!("Head minwidth: [{}]", min_width);
+
     TableContent {
       head: Some(head.as_str().to_owned()),
       content: vec![],
-      min_width: if (head.len() + 2) as u32 > 9 { (head.len() + 2) as u32 } else { 9 }
+      min_width
     }
   }
 
   fn add(&mut self, content: String) {
-    self.content.push(content.as_str().to_owned());
-    if (content.len() + 2) as u32 > self.min_width {
-      self.min_width = (content.len() + 2) as u32
+    self.content.push(content.trim().to_owned());
+    if (content.trim().len() + 2) as u32 > self.min_width {
+      self.min_width = {
+        if (content.trim().len() + 2) as u32 > 9 {
+          if (content.trim().len() + 2) as u32 > 25 {
+            if content.as_str().to_owned().split(".").last().unwrap_or("").trim().is_empty() {
+              23
+            }
+            else
+            {
+              content.as_str().to_owned().split(".").last().unwrap().trim().len() as u32 + 17
+            }
+          }
+          else
+          {
+            (content.trim().len() + 2) as u32
+          }
+        }
+        else
+        {
+          9
+        }
+      };
     }
   }
 }
@@ -126,8 +169,8 @@ impl Table {
     let mut n = 0;
 
     loop {
-      if n >= cols.len() {break;}
-
+      if n == 0 && n >= cols.len() {break;}
+      if n >= cols[0].content.len() {break;}
       let mut temp_vec: Vec<String> = Vec::new();
 
       for content in &cols {
@@ -135,7 +178,7 @@ impl Table {
       }
 
       ret = format!("{}\n{}", ret, temp_vec.join("|"));
-
+      //println!("{}", n);
       n = n + 1;
     }
 
@@ -178,10 +221,10 @@ impl Table {
 
 #[derive(PartialEq, Eq, Ord, PartialOrd)]
 enum FileFolderType {
-  Folder,
   HiddenFolder,
-  File,
+  Folder,
   HiddenFile,
+  File,
 }
 
 struct FileFolder {
@@ -245,7 +288,7 @@ impl FileFolder {
 
 fn main() {
   let parser = ArgParser::new();
-  let list = parser.list.unwrap_or(true);
+  let list = parser.list.unwrap_or(false);
   let all = parser.all.unwrap_or(false);
   let ff = FileFolder::new(parser.sortmodified.unwrap_or(false));
   let markfolder = parser.folder_classification.unwrap_or(true);
