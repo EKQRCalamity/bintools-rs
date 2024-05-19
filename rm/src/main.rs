@@ -7,7 +7,7 @@ struct ArgParser {
 impl ArgParser {
     fn new() -> ArgParser {
         let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
-        let mut parser = ArgParser { paths: vec![] }; 
+        let mut parser = ArgParser { paths: vec![] };
         let mut first: bool = true;
         for arg in args {
             if first {
@@ -17,7 +17,7 @@ impl ArgParser {
             parser.paths.push(arg);
         }
         parser
-    }    
+    }
 }
 
 pub fn read_input(prompt: &str) -> String {
@@ -31,11 +31,11 @@ pub fn read_input(prompt: &str) -> String {
 
 fn main() {
     let parser = ArgParser::new();
-     
+
     if parser.paths.is_empty() {
         println!("No files or folders were specified.");
     }
-    
+
     for path in parser.paths {
         let as_path = std::path::Path::new(&path);
         if !as_path.exists() {
