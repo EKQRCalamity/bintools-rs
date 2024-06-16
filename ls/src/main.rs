@@ -6,11 +6,12 @@ struct ArgParser {
   all: Option<bool>,
   folder_classification: Option<bool>,
   sortmodified: Option<bool>,
+  simple: Option<bool>
 }
 
 impl ArgParser {
   fn new() -> ArgParser {
-    let mut parser = ArgParser { list: None, all: None, folder_classification: None, sortmodified: None };
+    let mut parser = ArgParser { list: None, all: None, folder_classification: None, sortmodified: None, simple: None };
     let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
     let mut n = 0;
 
@@ -19,27 +20,25 @@ impl ArgParser {
         n = n + 1;
         continue;
       }
-      if n == 1 {
-        match arg.as_str() {
-          "-l" => {
-            parser.list = Some(true);
-          },
-          "-a" => {
-            parser.all = Some(true);
-          },
-          "-F" => {
-            parser.folder_classification = Some(true);
-          },
-          "-t" => {
-            parser.sortmodified = Some(true);
-          },
-          _ => {
-            panic!("Unknown argument specified")
-          }
+      match arg.as_str() {
+        "-l" => {
+          parser.list = Some(true);
+        },
+        "-s" => {
+          parser.simple = Some(true);
         }
-        n = n + 1;
-      } else {
-        panic!("More than one argument was specified.")
+        "-a" => {
+          parser.all = Some(true);
+        },
+        "-F" => {
+          parser.folder_classification = Some(true);
+        },
+        "-t" => {
+          parser.sortmodified = Some(true);
+        },
+        _ => {
+          panic!("Unknown argument specified")
+        }
       }
     }
 
@@ -177,14 +176,13 @@ impl Table {
       }
 
       ret = format!("{}\n{}", ret, temp_vec.join("|"));
-      //println!("{}", n);
       n = n + 1;
     }
 
     return ret;
   }
 
-  fn as_list(cols: Vec<TableContent>) -> String {
+  fn as_list(cols: Vec<TableContent>, simple: bool) -> String {
     let mut ret: String = String::new();
     for content in &cols {
       let head = content.head.clone().unwrap_or(String::from("unknown"));
@@ -194,20 +192,26 @@ impl Table {
         ret = format!("{}\n\n{}", ret, head);
       }
       ret = format!("{}\n{}", ret, (0..((head.len() + 3) as u32)).map(|_| "-").collect::<String>());
+      let mut first_content: bool = false;
       for c in &content.content {
-        ret = format!("{}\n{}", ret, c);
+        if !first_content || simple {
+          ret = format!("{}\n{}", ret, c);
+          first_content = true;
+        } else {
+          ret = format!("{}  {}", ret, c);
+        }
       }
     }
 
     return ret;
   }
 
-  fn to_readable(self) -> String {
+  fn to_readable(self, simple: bool) -> String {
     let mode = self.mode.unwrap_or(Tables::Table);
 
     let return_product: String = match mode {
       Tables::List => {
-        Table::as_list(self.columns)
+        Table::as_list(self.columns, simple)
       },
       Tables::Table => {
         Table::as_table(self.columns)
@@ -291,6 +295,7 @@ fn main() {
   let all = parser.all.unwrap_or(false);
   let ff = FileFolder::new(parser.sortmodified.unwrap_or(false));
   let markfolder = parser.folder_classification.unwrap_or(true);
+  let simple = parser.simple.unwrap_or(false);
 
   let mut content: TableContent = TableContent::new_from_head(Table::pad(String::from("Entries"), 9));
   let mut modifytimes: TableContent = TableContent::new_from_head(Table::pad(String::from("Modified"), 10));
@@ -314,8 +319,10 @@ fn main() {
   }
 
   if list {
-    print!("{}", Table::new(Tables::List, vec![content]).to_readable());
+    print!("{}", Table::new(Tables::List, vec![content]).to_readable(false));
+  } else if !simple {
+    print!("{}", Table::new(Tables::Table, vec![content, modifytimes]).to_readable(false));
   } else {
-    print!("{}", Table::new(Tables::Table, vec![content, modifytimes]).to_readable());
+    print!("{}", Table::new(Tables::List, vec![content]).to_readable(simple));
   }
 }
