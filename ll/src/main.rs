@@ -3,11 +3,12 @@ use std::{ fs, time::UNIX_EPOCH};
 struct ArgParser {  all: Option<bool>,
   folder_classification: Option<bool>,
   sortmodified: Option<bool>,
+  simple: Option<bool>
 }
 
 impl ArgParser {
   fn new() -> ArgParser {
-    let mut parser = ArgParser { all: None, folder_classification: None, sortmodified: None };
+    let mut parser = ArgParser { all: None, folder_classification: None, sortmodified: None, simple: None };
     let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
     let mut n = 0;
 
@@ -16,27 +17,24 @@ impl ArgParser {
         n = n + 1;
         continue;
       }
-      if n == 1 {
-        match arg.as_str() {
-          "-a" => {
-            parser.all = Some(true);
-          },
-          "-F" => {
-            parser.folder_classification = Some(true);
-          },
-          "-t" => {
-            parser.sortmodified = Some(true);
-          },
-          _ => {
-            panic!("Unknown argument specified")
-          }
+      match arg.as_str() {
+        "-a" => {
+          parser.all = Some(true);
+        },
+        "-F" => {
+          parser.folder_classification = Some(true);
+        },
+        "-t" => {
+          parser.sortmodified = Some(true);
+        },
+        "-s" => {
+          parser.simple = Some(true);
+        },
+        _ => {
+          panic!("Unknown argument specified")
         }
-        n = n + 1;
-      } else {
-        panic!("More than one argument was specified.")
       }
     }
-
     parser
   }
 }
@@ -146,7 +144,7 @@ impl Table {
     }
   }
 
-  fn as_list(cols: Vec<TableContent>) -> String {
+  fn as_list(cols: Vec<TableContent>, simple: bool) -> String {
     let mut ret: String = String::new();
     for content in &cols {
       let head = content.head.clone().unwrap_or(String::from("unknown"));
@@ -156,18 +154,22 @@ impl Table {
         ret = format!("{}\n\n{}", ret, head);
       }
       ret = format!("{}\n{}", ret, (0..((head.len() + 3) as u32)).map(|_| "-").collect::<String>());
+      let mut first_content: bool = false;
       for c in &content.content {
-        ret = format!("{}\n{}", ret, c);
+        if !first_content || simple {
+          ret = format!("{}\n{}", ret, c);
+          first_content = true;
+        } else {
+          ret = format!("{}  {}", ret, c);
+        }
       }
     }
 
     return ret;
   }
 
-  fn to_readable(self) -> String {
-
-    let return_product: String = Table::as_list(self.columns);
-
+  fn to_readable(self, simple: bool) -> String {
+    let return_product: String = Table::as_list(self.columns, simple);
     return return_product;
   }
 }
@@ -266,5 +268,5 @@ fn main() {
     }
   }
 
-  print!("{}", Table::new(vec![content]).to_readable());
+  print!("{}", Table::new(vec![content]).to_readable(parser.simple.unwrap_or(false)));
 }
