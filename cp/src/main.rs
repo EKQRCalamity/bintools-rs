@@ -10,6 +10,7 @@ pub fn read_input(prompt: &str) -> String {
 #[derive(Debug)]
 struct ArgParser {
   from: String,
+  to_original: String,
   to: String,
   force: Option<bool>
 }
@@ -17,7 +18,7 @@ struct ArgParser {
 impl ArgParser {
   fn new() -> ArgParser {
     let args: Vec<String> = std::env::args().map(|y| y.to_owned()).collect();
-    let mut parser = ArgParser { from: String::new(), to: String::new(), force: None };
+    let mut parser = ArgParser { from: String::new(), to: String::new(), to_original: String::new(), force: None };
     let mut n: i8 = 0;
     for arg in args {
       if n == 0 {
@@ -31,7 +32,8 @@ impl ArgParser {
             parser.from = arg;
             n = n + 1;
           } else if n == 2 {
-            parser.to = arg;
+            parser.to = arg.to_owned();
+            parser.to_original = arg;
             n = n + 1;
           } else {
             println!("Too many arguments supplied. Continuing with first.");
@@ -56,14 +58,28 @@ fn main() {
   let parser = ArgParser::new();
   let force = parser.force.unwrap_or(false);
   if parser.to == String::new() || parser.from == String::new() {
-    panic!("Copy paths not specified.");
+    eprintln!("Copy paths not specified.");
+    std::process::exit(1);
   }
   if std::path::Path::new(&parser.to).exists() && !force {
     let input = read_input(format!("Are you sure you want to overwrite the file? ({}) [Y/n]", &parser.to).as_str());
     if input.to_lowercase().as_str() != "y" {
-      panic!("Operation aborted.");
+      eprintln!("Operation aborted.");
+      std::process::exit(1);
     }
   }
+
+  if !std::path::Path::new(&parser.to_original).exists() && (parser.to_original.ends_with("/") || parser.to_original.ends_with("\\")) {
+    match std::fs::create_dir_all(&parser.to_original) {
+      Ok(_) => {
+      },
+      Err(e) => {
+        eprintln!("Error occured while creating target directory: {}", e);
+        std::process::exit(1);
+      }
+    };
+  }
+
   match std::fs::copy(parser.from, parser.to) {
     Ok(_) => {
       println!("Files copied.");
